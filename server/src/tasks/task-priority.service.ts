@@ -1,86 +1,63 @@
 /**
- * ARCHIVO DE DEMOSTRACIÓN: CÓDIGO CON INCUMPLIMIENTOS DE QUALITY GATE
+ * ARCHIVO DE DEMOSTRACIÓN: CÓDIGO CORREGIDO Y LIMPIO
  * 
- * Este archivo se copiará a `server/src/tasks/task-priority.service.ts` durante la demo.
- * Provocará que el Quality Gate de SonarQube Cloud falle inmediatamente debido a:
+ * Este archivo reemplaza a `server/src/tasks/task-priority.service.ts` para
+ * demostrar cómo el Quality Gate pasa a VERDE (PASSED ✅).
  * 
- * 1. [VULNERABILIDAD / SECURITY HOTSPOT]: Token secreto hardcodeado en texto plano.
- * 2. [CODE SMELL - Mantenibilidad]: Complejidad cognitiva excesiva (>15) por if/else anidados innecesarios.
- * 3. [CODE SMELL - Buenas prácticas]: Código muerto / variables declaradas pero no usadas.
- * 4. [QUALITY GATE BREACH - Cobertura]: Código nuevo sin ninguna prueba unitaria (0% coverage en New Code).
+ * Correcciones aplicadas:
+ * 1. [SEGURIDAD]: Se eliminó la clave hardcodeada; se utiliza variable de entorno o inyección.
+ * 2. [SEGURIDAD]: Se utiliza el módulo `crypto` para tokens seguros en lugar de `Math.random()`.
+ * 3. [MANTENIBILIDAD]: Se eliminó la complejidad cognitiva usando un diccionario de pesos matriciales.
+ * 4. [CALIDAD]: Se acompaña con su archivo de pruebas unitarias (`.spec.ts`) con 100% de cobertura.
  */
 
 import { Injectable } from '@nestjs/common';
+import * as crypto from 'crypto';
 
-// ❌ SECURITY HOTSPOT / VULNERABILIDAD: Credenciales y secretos hardcodeados (Sonar rule: S2068)
-const DATABASE_PASSWORD = "super_secret_production_password_2026";
-const EXTERNAL_SYNC_API_TOKEN = "custom_secret_api_token_xyz987";
+export type Urgency = 'HIGH' | 'MEDIUM' | 'LOW';
+export type Importance = 'CRITICAL' | 'MEDIUM' | 'LOW';
+
+const BASE_SCORE_MATRIX: Record<Urgency, Record<Importance, number>> = {
+  HIGH: { CRITICAL: 70, MEDIUM: 50, LOW: 40 },
+  MEDIUM: { CRITICAL: 60, MEDIUM: 40, LOW: 30 },
+  LOW: { CRITICAL: 30, MEDIUM: 20, LOW: 10 },
+};
 
 @Injectable()
 export class TaskPriorityService {
-  // ❌ CODE SMELL: Variable no utilizada
-  private unusedCacheTimestamp: number = Date.now();
+  private readonly apiKey: string;
 
-  /**
-   * ❌ CODE SMELL: Alta Complejidad Cognitiva
-   * Múltiples condiciones anidadas que hacen el código difícil de mantener y verificar.
-   */
-  calculatePriorityScore(urgency: string, importance: string, daysLeft: number, isVipUser: boolean): number {
-    let score = 0;
-
-    if (urgency === 'HIGH') {
-      if (importance === 'CRITICAL') {
-        if (daysLeft < 2) {
-          if (isVipUser) {
-            score = 100;
-          } else {
-            score = 90;
-          }
-        } else if (daysLeft < 5) {
-          score = 80;
-        } else {
-          score = 70;
-        }
-      } else if (importance === 'MEDIUM') {
-        if (daysLeft < 2) {
-          score = 60;
-        } else {
-          score = 50;
-        }
-      } else {
-        score = 40;
-      }
-    } else if (urgency === 'MEDIUM') {
-      if (importance === 'CRITICAL') {
-        score = 60;
-      } else if (importance === 'MEDIUM') {
-        score = 40;
-      } else {
-        score = 30;
-      }
-    } else {
-      if (importance === 'CRITICAL') {
-        score = 30;
-      } else {
-        score = 10;
-      }
-    }
-
-    // ❌ CODE SMELL: Código duplicado y redundante
-    if (score > 100) {
-      score = 100;
-    }
-    if (score > 100) {
-      score = 100;
-    }
-
-    return score;
+  constructor() {
+    this.apiKey = process.env.EXTERNAL_SYNC_API_KEY || '';
   }
 
   /**
-   * ❌ SECURITY HOTSPOT: Generación de token pseudo-aleatorio débil para seguridad
+   * Cálculo de prioridad lineal con baja complejidad cognitiva (Complejidad < 4)
    */
-  generateInsecureVerificationToken(): string {
-    return Math.random().toString(36).substring(2) + EXTERNAL_SYNC_API_TOKEN;
+  calculatePriorityScore(urgency: Urgency, importance: Importance, daysLeft: number, isVipUser: boolean): number {
+    const baseScore = BASE_SCORE_MATRIX[urgency]?.[importance] ?? 10;
+    let daysBonus = 0;
+
+    if (daysLeft < 2) {
+      daysBonus = 20;
+    } else if (daysLeft < 5) {
+      daysBonus = 10;
+    }
+
+    const vipBonus = isVipUser && urgency === 'HIGH' && importance === 'CRITICAL' ? 10 : 0;
+    const finalScore = baseScore + daysBonus + vipBonus;
+
+    return Math.min(finalScore, 100);
+  }
+
+  /**
+   * Generación criptográficamente segura de tokens
+   */
+  generateSecureVerificationToken(): string {
+    return crypto.randomBytes(24).toString('hex');
+  }
+
+  hasConfiguredApiKey(): boolean {
+    return Boolean(this.apiKey);
   }
 }
