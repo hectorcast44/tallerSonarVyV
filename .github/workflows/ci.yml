@@ -1,0 +1,44 @@
+name: CI & SonarQube Cloud Analysis
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  test-and-sonar:
+    name: Build, Test & SonarQube Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          # fetch-depth: 0 es OBLIGATORIO para SonarQube Cloud.
+          # Permite analizar el historial de git para identificar autores (blame)
+          # y calcular métricas sobre el "New Code Period".
+          fetch-depth: 0
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build Applications
+        run: npm run build
+
+      - name: Run Tests with LCOV Coverage
+        run: npm run test:cov
+
+      - name: SonarQube Cloud Scan
+        uses: SonarSource/sonarqube-scan-action@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Necesario para PR Decoration en GitHub
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}   # Token de autenticación de SonarCloud

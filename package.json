@@ -1,0 +1,26 @@
+{
+  "name": "taller-sonar-vyv",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Taller de Verificación y Validación: Integración de SonarQube Cloud con GitHub Actions en React + NestJS",
+  "workspaces": [
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "test": "npm run test --workspaces",
+    "test:cov": "npm run test:cov --workspaces"
+  },
+  "keywords": [
+    "sonarqube",
+    "sonarcloud",
+    "github-actions",
+    "react",
+    "nestjs",
+    "quality-gate",
+    "verification-validation"
+  ],
+  "author": "",
+  "license": "MIT"
+}
